@@ -1,0 +1,201 @@
+PROJECT: Tesla FSD · V2V Fleet Simulation  (browser 3D driving game, Three.js r128 from CDN)
+Updated: 2026-10-18
+
+FILES (keep in the same folder, open game.html in a browser)
+  game.html  main game: HUD, road, traffic AI, V2V mesh, physics, cameras, audio, interior cockpit
+  car.js     PLAYER CAR ONLY (Model Y "Juniper"-style, procedural). Loaded by game.html with <script src="car.js">
+  gameInfo.txt  this file
+
+WHAT THE GAME IS
+  Endless 6-lane highway. You drive a red Model Y-style car (WASD/arrows, Space handbrake, C camera, M sound,
+  hidden Shift = boost) among 36 gold Cybercab AI cars. Tesla-style HUD (gear, mph, speed limit 45, battery,
+  "Self-Driving" label), blue FSD path ribbon + lead-car ring/tag, automatic emergency braking (AEB),
+  lane-keeping assist, day/night mode, 4 cameras (Follow, Drone, Bumper, Interior with a drawn dash screen).
+  NOTE: "Self-Driving" is cosmetic - you steer manually; only AEB + lane-keeping are real.
+
+HOW game.html IS ORGANISED (top to bottom)
+  renderer/lights/env reflections -> road texture + barriers + lamp poles -> Cybercab model (makeCar)
+  -> PLAYER (built by car.js) + interior cockpit -> FSD ribbon -> traffic AI (IDM car-following, lane
+  changes, yield to player = "V2V") -> V2V link lines -> audio (WebAudio, no files) -> input/cameras
+  -> day/night -> player physics (stepPlayer) -> camera -> HUD -> main loop (frame)
+
+CONVENTIONS
+  Car faces -Z. Units = metres. Lane i centre x = LX(i) = -11.1 + 3.7*(i+0.5), 6 lanes. P = player state
+  object (x,z,v,psi,steer,pitch,roll,br,...). Bicycle-model steering, wheelbase WB = 2.9. MPH = 2.23694*m/s.
+
+car.js CONTRACT (what game.html expects - keep this stable when upgrading the car)
+  buildPlayerCar({glow}) -> { g, body, wheels, rear, update(P,dt), dims }
+  - g: root group (game sets position + heading). body: child group that gets pitch/roll.
+  - ALL exterior parts must be children of `body`: game parents the cockpit to body and hides every
+    other body child in the Interior camera.
+  - update(P,dt) is called every frame: wheel spin + front-wheel steer, body pitch/roll, brake lights.
+  - glow(col,w,h,x,y,z,parent) = game's night-glow sprite helper (visible only at night).
+  - Origin at ground centre. Size 4.84 x 1.95 x 1.63 m, wheel radius .37, wheelbase 2.86.
+  - Interior camera sits at (-0.38, 1.27, 0.15) relative to the car (driver seat) - keep the cabin roomy there.
+
+HOW THE CAR IS BUILT (car.js)
+  Body = lofted mesh: 100 cross-sections (rounded super-ellipses) driven by profile curves (yT hood/belt,
+  yB underside, nTop edge roundness, planHW width). Paint/black trim is baked as vertex colours.
+  Glass house = second loft (gHW width, yR roof line) with black belt trim + B/C pillars.
+  Front/rear light bars = tubes following the body contour. Also: aero wheels (turbine blades, steer+spin),
+  wheel-arch crescents, door/hood/trunk panel lines, mirrors, brake lights (rear material).
+  Easy tweaks: PAINT_HEX/PAINT = colour; the curve control points = shape; WX/WZ/WR = wheels.
+
+DONE SO FAR
+  1. Single-file game: driving physics, AI traffic, V2V mesh, HUD, cameras, sound, day/night.
+  2. Split project: player car moved to car.js; Cybercab traffic car still inside game.html.
+  3. New Model Y-style car (replaces the old extruded-box car).
+
+CHECKED / NOT CHECKED
+  Checked: both files parse; car.js geometry math runs with no NaN (headless, stubbed THREE).
+  NOT checked: real in-browser look. The car has not been viewed rendered yet - expect to tune proportions,
+  light-bar position, wheel look and colours after the first run.
+
+KNOWN ISSUES / TODO IDEAS
+  - Help text does not mention Shift boost; V2V "latency" number is random (cosmetic).
+  - No real self-driving mode yet (auto steer / lane change / follow traffic).
+  - V2V is only a yield rule + visual lines; cars do not really share braking info.
+  - Unused in car.js: no interior seats/dash (cockpit lives in game.html); no turn signals, no damage.
+  - Possible next splits: traffic.js (Cybercab + AI), hud.js, audio.js, cockpit.js.
+
+TO CONTINUE IN ANOTHER CHAT: attach game.html + car.js + this file and say:
+  "Continue my Tesla FSD V2V Three.js game. Read gameInfo.txt first. Next task: <your task>."
+
+UPDATE 2026-10-18 (latest):
+- game.html: added camera #5 "Orbit" (key C cycles Follow > Drone > Bumper > Interior > Orbit).
+  In Orbit, hold + drag mouse to rotate around the car (any side, up/down), scroll wheel zooms (4-30 m).
+  State lives in object OB {yaw,pit,d}; pointer handlers on the canvas; camera branch in updCam() (camMode===4).
+- Help text updated. car.js unchanged. Cybercab traffic car still inside game.html.
+- Still not checked: real in-browser look of the car (tune proportions/colours after first run).
+
+UPDATE 2026-10-18 (interior upgrade, car.js only):
+- car.js: added buildInterior() - Model Y cabin (dash + pale trim strip + red ambient lines, door cards,
+  A/B/C pillars, roof rails, front header + rear-view mirror + overhead pods, tinted glass roof, front seats,
+  rear bench, centre console, floor, hood sliver, inside view of side mirrors, round steering wheel with T hub).
+- The interior is parented to root `g` (NOT `body`), shown only while the exterior body mesh is hidden
+  (Interior camera). update(P,dt) syncs pitch/roll, wheel rotation (P.si*1.5) and day/night dimming
+  (night is detected from the glow sprites' .visible).
+- car.js auto-adopts game.html's cockpit on first Interior frame: hides its old boxes + steering wheel,
+  KEEPS its live dash screen group and repositions it (0,1.175,-0.80, scale .88). game.html unchanged.
+- Cabin is baked vertex-colour MeshBasicMaterial (single mesh), so it does not depend on scene lights.
+- Still not checked: real in-browser look. Tune seat/roof proportions after first run.
+
+PROJECT: Tesla FSD · V2V Fleet Simulation  (browser 3D driving game, Three.js r128 from CDN)
+Updated: 2026-10-18
+
+FILES (keep in the same folder, open game.html in a browser)
+  game.html  main game: HUD, road, traffic AI, V2V mesh, physics, cameras, audio, interior cockpit
+  car.js     PLAYER CAR ONLY (Model Y "Juniper"-style, procedural). Loaded by game.html with <script src="car.js">
+  gameInfo.txt  this file
+
+WHAT THE GAME IS
+  Endless 6-lane highway. You drive a red Model Y-style car (WASD/arrows, Space handbrake, C camera, M sound,
+  hidden Shift = boost) among 36 gold Cybercab AI cars. Tesla-style HUD (gear, mph, speed limit 45, battery,
+  "Self-Driving" label), blue FSD path ribbon + lead-car ring/tag, automatic emergency braking (AEB),
+  lane-keeping assist, day/night mode, 4 cameras (Follow, Drone, Bumper, Interior with a drawn dash screen).
+  NOTE: "Self-Driving" is cosmetic - you steer manually; only AEB + lane-keeping are real.
+
+HOW game.html IS ORGANISED (top to bottom)
+  renderer/lights/env reflections -> road texture + barriers + lamp poles -> Cybercab model (makeCar)
+  -> PLAYER (built by car.js) + interior cockpit -> FSD ribbon -> traffic AI (IDM car-following, lane
+  changes, yield to player = "V2V") -> V2V link lines -> audio (WebAudio, no files) -> input/cameras
+  -> day/night -> player physics (stepPlayer) -> camera -> HUD -> main loop (frame)
+
+CONVENTIONS
+  Car faces -Z. Units = metres. Lane i centre x = LX(i) = -11.1 + 3.7*(i+0.5), 6 lanes. P = player state
+  object (x,z,v,psi,steer,pitch,roll,br,...). Bicycle-model steering, wheelbase WB = 2.9. MPH = 2.23694*m/s.
+
+car.js CONTRACT (what game.html expects - keep this stable when upgrading the car)
+  buildPlayerCar({glow}) -> { g, body, wheels, rear, update(P,dt), dims }
+  - g: root group (game sets position + heading). body: child group that gets pitch/roll.
+  - ALL exterior parts must be children of `body`: game parents the cockpit to body and hides every
+    other body child in the Interior camera.
+  - update(P,dt) is called every frame: wheel spin + front-wheel steer, body pitch/roll, brake lights.
+  - glow(col,w,h,x,y,z,parent) = game's night-glow sprite helper (visible only at night).
+  - Origin at ground centre. Size 4.84 x 1.95 x 1.63 m, wheel radius .37, wheelbase 2.86.
+  - Interior camera sits at (-0.38, 1.27, 0.15) relative to the car (driver seat) - keep the cabin roomy there.
+
+HOW THE CAR IS BUILT (car.js)
+  Body = lofted mesh: 100 cross-sections (rounded super-ellipses) driven by profile curves (yT hood/belt,
+  yB underside, nTop edge roundness, planHW width). Paint/black trim is baked as vertex colours.
+  Glass house = second loft (gHW width, yR roof line) with black belt trim + B/C pillars.
+  Front/rear light bars = tubes following the body contour. Also: aero wheels (turbine blades, steer+spin),
+  wheel-arch crescents, door/hood/trunk panel lines, mirrors, brake lights (rear material).
+  Easy tweaks: PAINT_HEX/PAINT = colour; the curve control points = shape; WX/WZ/WR = wheels.
+
+DONE SO FAR
+  1. Single-file game: driving physics, AI traffic, V2V mesh, HUD, cameras, sound, day/night.
+  2. Split project: player car moved to car.js; Cybercab traffic car still inside game.html.
+  3. New Model Y-style car (replaces the old extruded-box car).
+
+CHECKED / NOT CHECKED
+  Checked: both files parse; car.js geometry math runs with no NaN (headless, stubbed THREE).
+  NOT checked: real in-browser look. The car has not been viewed rendered yet - expect to tune proportions,
+  light-bar position, wheel look and colours after the first run.
+
+KNOWN ISSUES / TODO IDEAS
+  - Help text does not mention Shift boost; V2V "latency" number is random (cosmetic).
+  - No real self-driving mode yet (auto steer / lane change / follow traffic).
+  - V2V is only a yield rule + visual lines; cars do not really share braking info.
+  - Unused in car.js: no interior seats/dash (cockpit lives in game.html); no turn signals, no damage.
+  - Possible next splits: traffic.js (Cybercab + AI), hud.js, audio.js, cockpit.js.
+
+TO CONTINUE IN ANOTHER CHAT: attach game.html + car.js + this file and say:
+  "Continue my Tesla FSD V2V Three.js game. Read gameInfo.txt first. Next task: <your task>."
+
+UPDATE 2026-10-18 (latest):
+- game.html: added camera #5 "Orbit" (key C cycles Follow > Drone > Bumper > Interior > Orbit).
+  In Orbit, hold + drag mouse to rotate around the car (any side, up/down), scroll wheel zooms (4-30 m).
+  State lives in object OB {yaw,pit,d}; pointer handlers on the canvas; camera branch in updCam() (camMode===4).
+- Help text updated. car.js unchanged. Cybercab traffic car still inside game.html.
+- Still not checked: real in-browser look of the car (tune proportions/colours after first run).
+UPDATE 2026-10-18 (interior upgrade, car.js only):
+- car.js: added buildInterior() - Model Y cabin (dash + pale trim strip + red ambient lines, door cards,
+  A/B/C pillars, roof rails, front header + rear-view mirror + overhead pods, tinted glass roof, front seats,
+  rear bench, centre console, floor, hood sliver, inside view of side mirrors, round steering wheel with T hub).
+- Interior is parented to root `g` (NOT `body`), shown only while the exterior body mesh is hidden (Interior camera).
+  car.js auto-adopts game.html's cockpit on the first Interior frame: hides its old boxes + wheel, KEEPS its
+  live dash screen group and repositions it. Cabin = baked vertex-colour MeshBasicMaterial (one mesh), dims at night.
+
+UPDATE 2026-10-18 (systems upgrade, game.html; car.js unchanged):
+- Battery: iPhone-style battery (shell + nub + rounded fill). Energy model in stepBattery(): wheel power =
+  (m*a + drag + rolling)*v. Positive -> drains pack; negative (lifting off W, braking) -> regen charges pack.
+  Blue animated fill + bolt while charging, red <20%. Range (mi) = energy left / recent Wh-per-mile.
+  Constant DRAIN (=4) speeds energy flow so the change is visible; set DRAIN=1 for realistic. Pack = 75 kWh, starts 78%.
+  Battery at 0% = no throttle. Dash screen also shows % and miles.
+- Auto Drive (button / key F): lane keeping + adaptive cruise (IDM, limit 45 mph) + overtakes slower traffic when the
+  neighbour lane is free. AEB stays active. Driver takes over with S / Space / A / D (W = temporary speed override).
+  Label shows "Self-Driving" when on, "FSD Ready" when off. State object: AUTO. Functions: autoDrive(), setAuto().
+- AEB fixed: decided BEFORE throttle each frame; cuts throttle, computes required decel (v^2 / 2*(gap-3.5)), brakes up
+  to 10.5 m/s2, also a proximity rule under 6 m. Sees cars changing into your lane. (Physically unavoidable if the
+  closing speed is too high for the gap, e.g. 90 mph at 60 m.)
+- Rain (button / key R): soft streaks around the camera, greyer/darker sky, shorter fog, quiet rain hiss. setRain().
+- V2V Mesh toggle (button / key V): hides link lines + cyan node domes on the cars. setV2V().
+- Buttons row now: Auto Drive, Rain, V2V Mesh, Day/Night, Camera, Sound. Help text lists F / R / V / Shift.
+- Headless-tested (stubbed DOM/THREE): battery drain + regen, AEB scenarios (0 hits except impossible cases),
+  auto-drive 120 s with traffic (0 hits, overtakes lanes). NOT checked: real in-browser look (rain, battery CSS).
+
+TO CONTINUE IN ANOTHER CHAT: attach Game.html + car.js + this file and say:
+  "Continue my Tesla FSD V2V Three.js game. Read GameInfo.txt first. Next task: <your task>."
+
+  UPDATE 2026-10-18 (Supercharger v2, supercharger_snippet.js loaded after the main script):
+- Station is now a separate apron beside the road (left), like a petrol pump; road wall removed only in front of it (barL hidden, replaced by 2 pieces scBarA/scBarB). Station every 50 miles (SC_MI).
+- Game.html stepPlayer uses scLimL(P.z) for the left road limit; steering maxD = .5/(1+(v/15)^2).
+- Supercharger card on the left above the key help; shows "next charger (mi)" only at battery <= 30%.
+
+UPDATE 2026-10-18 (driving fixes):
+- FSD ribbon clamped to the road (scLimL at stations). AI avoids the player (lateral shift, speed gap, cancels lane change); side contact slides apart, no slow-down/teleport.
+- psi unbounded (wrapped to -PI..PI): free U-turns; P.vz = speed along -Z; AEB/lead off when facing away. Reverse accel -6, max -14 m/s.
+- Superchargers every 5 miles; only the NEAREST station exists so you can drive back to a missed one.
+
+UPDATE 2026-10-18 (v2v_avoid.js): cooperative V2V avoidance. Wraps stepCar; predicts player path (4 s), alert cars shift
+away (overlay c.av), cascade to neighbours (gap 2.5 m), speed/brake adjust (c.va), amber link+packet+halo animation
+only while avoiding. Load after supercharger_snippet.js. Also fixed: NaN dt bug (invisible cars).
+
+
+autopilot.js (v-latest): charger run always targets the NEAREST station (ST.n), ahead or behind.
+Phases: run -> prep (brake / pick sweep side) -> turn (full-lock U-turn) ; behind = U-turn, drive back (+Z), 2nd U-turn on the apron, park facing -Z.
+back(): free-space x search (scanX/safeBack), creeps to slide past stopped cars. eco(): slows if battery would not last (kWh/m estimate).
+go(): merge caps 24/17 m/s near station, park needs cos(psi)>.94 and |x-SC_CX|<1.3. parkedAt starts -1e9 (no 'Parked' pill at start).
+Pill: 'Auto Drive -> Supercharger · X mi' (+ ' · turning around'), placed under #batWarn, stays on until parked/cancelled.
+Optional Game.html: stepCar wrong-way dodge (uses P.vz), frame() traffic window flips when P.vz < -3.
